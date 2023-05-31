@@ -9,6 +9,33 @@
 #include "/include/utility/fast_math.glsl"
 #include "/include/utility/spherical_harmonics.glsl"
 
+// Add include and uniforms
+#include "/include/utility/space_conversion.glsl"        
+uniform int heldItemId;
+uniform int heldItemId2;
+uniform int heldBlockLightValue;
+uniform int heldBlockLightValue2;
+
+vec3 get_torchlight_color() {
+	vec3 color1, color2;
+	if( heldItemId == 1 ) color1 = vec3(1.0, 0.78, 0.72); // Warm
+	else if( heldItemId == 2 ) color1 = vec3(0.5, 0.5, 1.00); // Cold
+	else if( heldItemId == 3 ) color1 = vec3(1.0, 0.25, 0.25); // Red
+	else if( heldItemId == 4 ) color1 = vec3(0.75, 1.00, 0.75); // Light Green
+	else if( heldItemId == 5 ) color1 = vec3(0.25, 0.25, 1.00); // Blue
+	else color1 = vec3(1.0, 0.78, 0.72); // Default
+
+	if( heldItemId2 == 1 ) color2 = vec3(1.0, 0.78, 0.72); // Warm
+	else if( heldItemId2 == 2 ) color2 = vec3(0.72, 0.78, 1.00); // Cold
+	else if( heldItemId2 == 3 ) color2 = vec3(1.0, 0.1, 0.1); // Red
+	else if( heldItemId2 == 4 ) color2 = vec3(0.1, 1.00, 0.1); // Light Green
+	else if( heldItemId2 == 5 ) color2 = vec3(0.1, 0.1, 1.00); // Blue
+	else color2 = vec3(1.0, 0.78, 0.72); // Default
+
+	float friction = heldBlockLightValue2 /(heldBlockLightValue + heldBlockLightValue2 + 0.00001);
+	return mix(color1, color2, friction);
+}
+
 const float night_vision_scale = 1.5;
 const float metal_diffuse_amount = 0.25; // Scales diffuse lighting on metals, ideally this would be zero but purely specular metals don't play well with SSR
 
@@ -156,6 +183,27 @@ vec3 get_diffuse_lighting(
 	lighting += 0.1 * CAVE_LIGHTING_I * directional_lighting * ao * (1.0 - skylight_falloff) * (1.0 - 0.7 * darknessFactor);
 	lighting += nightVision * night_vision_scale * directional_lighting * ao;
 
+#if HELD_LIGHTING >= 1
+	// Held Torchlight 
+	if (heldBlockLightValue > 0 || heldBlockLightValue2 > 0 ) {
+
+		ivec2 view_texel = ivec2(gl_FragCoord.xy * taau_render_scale * rcp(taau_render_scale));
+		float depth0        = texelFetch(depthtex1, view_texel, 0).x;
+
+		vec3 view_pos  = screen_to_view_space(vec3(uv, depth0), true);
+		vec3 scene_pos = view_to_scene_space(view_pos);
+		vec3 world_pos = scene_pos + cameraPosition;
+
+		float world_length = pow(length(view_pos), 0.5);
+
+		float intensity = 0.066667 * max(heldBlockLightValue, heldBlockLightValue2); // Max Light Level is 15
+		intensity *= (0.25 * HELD_LIGHTING);
+		float strengh = max(0.0, pow((4 - world_length) * intensity, 2.2));
+
+		lighting += strengh * get_torchlight_color();
+	}
+#endif
+
 	return max0(lighting) * material.albedo * rcp_pi * mix(1.0, metal_diffuse_amount, float(material.is_metal));
 }
 
@@ -192,6 +240,27 @@ vec3 get_diffuse_lighting(
 	lighting += (blocklight_falloff * directional_lighting) * (blocklight_scale * blocklight_color);
 
 	lighting += material.emission * emission_scale;
+
+#if HELD_LIGHTING >= 1
+	// Held Torchlight 
+	if (heldBlockLightValue > 0 || heldBlockLightValue2 > 0 ) {
+
+		ivec2 view_texel = ivec2(gl_FragCoord.xy * taau_render_scale * rcp(taau_render_scale));
+		float depth0        = texelFetch(depthtex1, view_texel, 0).x;
+
+		vec3 view_pos  = screen_to_view_space(vec3(uv, depth0), true);
+		vec3 scene_pos = view_to_scene_space(view_pos);
+		vec3 world_pos = scene_pos + cameraPosition;
+
+		float world_length = pow(length(view_pos), 0.5);
+
+		float intensity = 0.066667 * max(heldBlockLightValue, heldBlockLightValue2); // Max Light Level is 15
+		intensity *= (0.25 * HELD_LIGHTING);
+		float strengh = max(0.0, pow((4 - world_length) * intensity, 2.2));
+
+		lighting += strengh * get_torchlight_color();
+	}
+#endif
 
 	return max0(lighting) * material.albedo * rcp_pi * mix(1.0, metal_diffuse_amount, float(material.is_metal));
 }

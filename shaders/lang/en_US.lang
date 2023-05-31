@@ -86,6 +86,11 @@ option.SH_SKYLIGHT                     = SH Skylight
 option.SSS_SHEEN                       = SSS Sheen
 option.SSS_INTENSITY                   = SSS Intensity
 option.SHADING_STRENGTH                = Shading Strength
+option.HELD_LIGHTING                   = Held Lighting
+option.HELD_LIGHTING.comment           = Allows handheld light sources to cast light onto the scene.
+value.HELD_LIGHTING.0=OFF
+value.HELD_LIGHTING.1=Normal
+value.HELD_LIGHTING.2=Bright
 
 option.SHADOW                          = Shadow Mapping
 option.SHADOW_PCF                      = Shadow Filtering
